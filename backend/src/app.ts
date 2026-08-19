@@ -25,7 +25,6 @@ import {
   GeminiTextProvider,
   MockImageProvider,
   QuotaFallbackImageProvider,
-  QuotaFallbackTextProvider,
   type ImageGenerationProvider,
   type TextGenerationProvider
 } from "./modules/pipeline/service/gemini.service.js";
@@ -53,10 +52,7 @@ export function createApp(options: {
   const projectService = new ProjectService(store, projects, dataRoot);
   const textProvider = options.textProvider ?? (
     env.GEMINI_API_KEY
-      ? new QuotaFallbackTextProvider(
-          new GeminiTextProvider(env.GEMINI_API_KEY, env.GEMINI_TEXT_MODEL, env.GEMINI_SERVICE_TIER),
-          new FakeTextGenerationProvider()
-        )
+      ? new GeminiTextProvider(env.GEMINI_API_KEY, env.GEMINI_TEXT_MODEL, env.GEMINI_SERVICE_TIER)
       : new FakeTextGenerationProvider()
   );
   const imageProvider = options.imageProvider ?? (

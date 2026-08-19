@@ -3,6 +3,8 @@ import { env } from "./shared/config/env.js";
 
 const server = createApp().listen(env.PORT, () => {
   console.log(`Backend listening on http://localhost:${env.PORT}`);
+  console.log(`Gemini text model: ${env.GEMINI_API_KEY ? env.GEMINI_TEXT_MODEL : "fake provider (no API key)"}`);
+  console.log(`Gemini image model: ${env.GEMINI_API_KEY ? env.GEMINI_IMAGE_MODEL : "mock provider (no API key)"}`);
 });
 
 server.on("error", (error: NodeJS.ErrnoException) => {

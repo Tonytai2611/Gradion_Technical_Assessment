@@ -20,6 +20,10 @@ export function useSignOut() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: authService.signOut,
-    onSuccess: () => queryClient.setQueryData(["session"], { user: null })
+    onSuccess: () => {
+      queryClient.setQueryData(["session"], { user: null });
+      queryClient.removeQueries({ queryKey: ["projects"] });
+      queryClient.removeQueries({ queryKey: ["project"] });
+    }
   });
 }
