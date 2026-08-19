@@ -1,0 +1,13 @@
+node_modules/
+.env
+*.log
+*.tsbuildinfo
+backend/data/*.db
+backend/data/*.db-*
+backend/data/books/*
+backend/data/images/*
+!backend/data/books/.gitkeep
+!backend/data/images/.gitkeep
+frontend/dist/
+backend/dist/
+coverage/
