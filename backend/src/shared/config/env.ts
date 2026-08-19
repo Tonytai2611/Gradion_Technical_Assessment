@@ -9,6 +9,9 @@ const envSchema = z.object({
   FRONTEND_ORIGIN: z.string().default("http://localhost:5173"),
   DATABASE_PATH: z.string().default("./data/app.db"),
   STEP_STALE_AFTER_MS: z.coerce.number().default(120000),
+  GEMINI_TEXT_MODEL: z.string().default("gemini-3.7-flash"),
+  GEMINI_IMAGE_MODEL: z.string().default("gemini-3.1-flash-lite-image"),
+  GEMINI_SERVICE_TIER: z.enum(["flex", "standard", "priority"]).default("standard"),
   GEMINI_API_KEY: z.string().optional()
 });
 
