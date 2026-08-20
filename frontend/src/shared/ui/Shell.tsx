@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession, useSignOut } from "../../features/auth/hooks/useSession";
+import { StatusToast } from "./StatusToast";
 
 export function Shell({ children }: PropsWithChildren) {
   const { data } = useSession();
@@ -27,12 +28,15 @@ export function Shell({ children }: PropsWithChildren) {
             <div className="ml-auto flex items-center gap-3 text-sm text-grad-body">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-grad-orange text-xs font-bold text-white">{initials}</span>
               <span>{user.name}</span>
-              <button className="text-xs text-neutral-500 hover:text-grad-orange" onClick={handleSignOut}>Sign out</button>
+              <button className="text-xs text-neutral-500 hover:text-grad-orange disabled:cursor-not-allowed disabled:opacity-60" disabled={signOut.isPending} onClick={handleSignOut}>
+                {signOut.isPending ? "Signing out..." : "Sign out"}
+              </button>
             </div>
           )}
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-6 py-12">{children}</main>
+      {signOut.isPending && <StatusToast title="Signing out" description="Clearing the session and returning to the identity screen." />}
     </div>
   );
 }

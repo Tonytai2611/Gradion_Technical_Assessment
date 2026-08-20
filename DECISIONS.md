@@ -26,6 +26,15 @@ The notebook uses the Gemini Files API, Interactions API, structured JSON output
 
 The assessment allows mocked image responses when live image generation runs into free-tier quota or rate limits. I kept real Gemini image generation as the preferred path, but added a provider boundary and fallback wrapper so only clearly identified quota/rate-limit errors can use deterministic mock images. I corrected an earlier placeholder SVG implementation because it looked too technical and did not prove the real image serving path; the mock provider now copies real PNG assets into the same project output folders as Gemini images. Invalid credentials, malformed requests, parsing mistakes, and programming errors still fail visibly.
 
+## AI overrides
+
+These are the places where I had to push back on AI output or correct an AI-assisted implementation:
+
+- Codex first treated button disabling and frontend pending state as the main duplicate-call guard. That felt unsafe: double-clicks are only one case, and a second tab or refresh can still race the backend. I moved the real guard into SQLite with an atomic claim before any Gemini call.
+- For long-running AI work, the suggestions kept drifting toward queues, background workers, WebSockets, and automatic retry loops. Those are reasonable tools in a larger product, but they were too much for this local assessment and would also blur the "user retries only" rule. I kept it to user-triggered HTTP calls, polling while a step is RUNNING, and explicit stale recovery.
+- The first mock image version copied generated SVG placeholders with large labels like `MOCK PORTRAIT`. It technically worked, but it made the UI look unfinished and did not prove that real image files would be served correctly. I replaced it with deterministic PNG assets copied into the same project image folders used by real Gemini output, with `source: "mock"` still persisted for honesty.
+- I also caught a text fallback that was too helpful in the wrong way: when Gemini text quota failed, it returned the fake style `Warm watercolor storybook style with soft ink outlines.` That could make a reviewer think Gemini had produced the style. I removed text fallback when an API key is configured; text steps now either call Gemini or fail visibly so the user can retry.
+
 ## One more day
 
 With one more day, I would add a small manual QA harness for the ugly paths: a debug toggle to force quota, force a provider failure, and mark a step as stale. The backend tests already cover those rules, but a reviewer-facing harness would make refresh, retry, stale recovery, and mock fallback easier to demonstrate without touching the DB or burning Gemini quota.

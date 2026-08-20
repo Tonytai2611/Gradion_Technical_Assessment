@@ -29,6 +29,8 @@ describe("StepAction", () => {
     renderWithProviders(<StepAction project={{ ...baseProject, stepState: "RUNNING" }} />);
 
     expect(screen.getByText("Generating character portraits...")).toBeInTheDocument();
+    expect(screen.getByText("Portraits is running")).toBeInTheDocument();
+    expect(screen.getByText("Gemini calls can take 10-30 seconds. You can refresh; the backend keeps the step state.")).toBeInTheDocument();
   });
 
   it("shows failed error and retry action", () => {
