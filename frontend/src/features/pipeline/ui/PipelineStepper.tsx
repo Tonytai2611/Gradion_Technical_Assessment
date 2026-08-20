@@ -21,7 +21,7 @@ export function PipelineStepper({ project }: { project: Project }) {
         return (
           <li key={step} className="flex items-center gap-2">
             <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-white ${done ? "bg-grad-ink" : current ? "bg-grad-orange" : "bg-grad-line"}`}>
-              {done ? "✓" : index + 1}
+              {done ? "OK" : index + 1}
             </span>
             <span className={`text-sm font-semibold ${current ? "text-grad-ink" : "text-neutral-500"}`}>{labels[step]}</span>
           </li>

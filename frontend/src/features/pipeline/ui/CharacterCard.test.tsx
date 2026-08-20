@@ -22,7 +22,7 @@ describe("CharacterCard", () => {
 
     expect(screen.getByText("Mole")).toBeInTheDocument();
     expect(screen.getByText("A gentle adult mole in watercolor.")).toBeInTheDocument();
-    expect(screen.getByText("Portrait")).toBeInTheDocument();
+    expect(screen.getByAltText("Mole portrait")).toBeInTheDocument();
     expect(screen.getByText("gemini")).toBeInTheDocument();
   });
 });

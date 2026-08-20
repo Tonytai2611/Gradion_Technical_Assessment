@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { Shell } from "../../../shared/ui/Shell";
+import { StatusToast } from "../../../shared/ui/StatusToast";
 import { useProjectDetail } from "../hooks/useProjectDetail";
 import { PipelineStepper } from "./PipelineStepper";
 import { StepAction } from "./StepAction";
@@ -13,8 +14,12 @@ export function ProjectDetailPage() {
 
   return (
     <Shell>
-      <Link className="mb-6 inline-block text-sm text-neutral-600 hover:text-grad-orange" to="/projects">← Back to projects</Link>
-      {isLoading && <p>Loading project...</p>}
+      <Link className="mb-6 inline-block text-sm text-neutral-600 hover:text-grad-orange" to="/projects">{"<-"} Back to projects</Link>
+      {isLoading && (
+        <section className="rounded-lg border border-[#e8e2e0] bg-white p-6 text-sm text-neutral-600">
+          Loading project...
+        </section>
+      )}
       {error && <p className="text-red-700">{error.message}</p>}
       {project && (
         <>
@@ -52,6 +57,7 @@ export function ProjectDetailPage() {
           </div>
         </>
       )}
+      {isLoading && <StatusToast title="Loading project" description="Fetching the latest pipeline state." />}
     </Shell>
   );
 }

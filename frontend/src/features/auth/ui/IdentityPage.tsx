@@ -1,23 +1,34 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../shared/ui/Button";
-import { useSignIn } from "../hooks/useSession";
+import { StatusToast } from "../../../shared/ui/StatusToast";
+import { useSession, useSignIn } from "../hooks/useSession";
 
 export function IdentityPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const { data: session, isLoading } = useSession();
   const signIn = useSignIn();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (session?.user) navigate("/projects", { replace: true });
+  }, [navigate, session?.user]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
+    setError("");
     if (!name.trim() || !email.includes("@")) {
       setError("Enter your name and a valid email to continue.");
       return;
     }
-    await signIn.mutateAsync({ name, email });
-    navigate("/projects");
+    try {
+      await signIn.mutateAsync({ name, email });
+      navigate("/projects");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not sign in.");
+    }
   }
 
   return (
@@ -38,8 +49,16 @@ export function IdentityPage() {
           <input className="gd-focus w-full rounded-md border border-grad-line bg-white px-3 py-3 text-sm" value={email} onChange={(event) => setEmail(event.target.value)} type="email" />
         </label>
         {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-        <Button className="mt-6 w-full" disabled={signIn.isPending}>Continue {"->"}</Button>
+        <Button className="mt-6 w-full" disabled={signIn.isPending || isLoading}>
+          {signIn.isPending ? "Signing in..." : "Continue ->"}
+        </Button>
       </form>
+      {(signIn.isPending || isLoading) && (
+        <StatusToast
+          title={signIn.isPending ? "Signing you in" : "Checking session"}
+          description="Loading your workspace and projects."
+        />
+      )}
     </div>
   );
 }

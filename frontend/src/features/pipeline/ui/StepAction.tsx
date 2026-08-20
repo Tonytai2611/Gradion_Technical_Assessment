@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../../shared/ui/Button";
+import { StatusToast } from "../../../shared/ui/StatusToast";
 import type { ProjectDetail } from "../../projects/types/project.types";
 import { useRecoverStep, useRunStep } from "../hooks/useRunStep";
 
@@ -23,6 +24,8 @@ export function StepAction({ project }: { project: ProjectDetail }) {
   const [customStyle, setCustomStyle] = useState("");
   const run = useRunStep(project.id);
   const recover = useRecoverStep(project.id);
+  const isStarting = run.isPending;
+  const isRecovering = recover.isPending;
 
   if (project.status === "DONE") {
     return (
@@ -35,23 +38,33 @@ export function StepAction({ project }: { project: ProjectDetail }) {
 
   if (project.isStale) {
     return (
-      <section className="rounded-lg border border-amber-300 bg-amber-50 p-6">
-        <p className="font-semibold">This {labels[project.currentStep]} step looks interrupted.</p>
-        <p className="mt-1 text-sm text-neutral-700">Completed earlier results are preserved. You can mark this step retryable.</p>
-        <Button className="mt-4 bg-white text-grad-ink ring-1 ring-grad-ink hover:bg-grad-paper" onClick={() => recover.mutate(project)}>
-          Recover {labels[project.currentStep]}
-        </Button>
+      <section className="relative rounded-lg border border-amber-300 bg-amber-50 p-6">
+        {isRecovering ? (
+          <>
+            <ProgressNotice title={`Recovering ${labels[project.currentStep]}`} description="Marking this interrupted step as retryable..." />
+            <StatusToast title={`Recovering ${labels[project.currentStep]}`} description="Preparing this step so you can retry it." />
+          </>
+        ) : (
+          <>
+            <p className="font-semibold">This {labels[project.currentStep]} step looks interrupted.</p>
+            <p className="mt-1 text-sm text-neutral-700">Completed earlier results are preserved. You can mark this step retryable.</p>
+            <Button className="mt-4 bg-white text-grad-ink ring-1 ring-grad-ink hover:bg-grad-paper" onClick={() => recover.mutate(project)}>
+              Recover {labels[project.currentStep]}
+            </Button>
+          </>
+        )}
       </section>
     );
   }
 
-  if (project.stepState === "RUNNING") {
+  if (project.stepState === "RUNNING" || isStarting) {
     return (
-      <section className="rounded-lg border border-[#e8e2e0] bg-white p-6">
-        <div className="flex items-center gap-3 text-sm text-neutral-700">
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-grad-line border-t-grad-orange" />
-          {runningCopy[project.currentStep]}...
-        </div>
+      <section className="relative rounded-lg border border-[#e8e2e0] bg-white p-6">
+        <ProgressNotice
+          title={isStarting ? `Starting ${labels[project.currentStep]}` : labels[project.currentStep]}
+          description={`${runningCopy[project.currentStep]}...`}
+        />
+        <StatusToast title={`${labels[project.currentStep]} is running`} description="Please keep this tab open or come back after refresh." />
       </section>
     );
   }
@@ -74,5 +87,23 @@ export function StepAction({ project }: { project: ProjectDetail }) {
         {project.stepState === "FAILED" ? "Retry" : "Generate"} {labels[project.currentStep]} {"->"}
       </Button>
     </section>
+  );
+}
+
+function ProgressNotice({ title, description }: { title: string; description: string }) {
+  return (
+    <div role="status" aria-live="polite">
+      <div className="flex items-center gap-3 text-sm text-neutral-700">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-grad-line border-t-grad-orange" />
+        <div>
+          <p className="font-semibold text-grad-ink">{title}</p>
+          <p className="mt-0.5">{description}</p>
+        </div>
+      </div>
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-grad-paper">
+        <div className="gd-progress-bar h-full w-2/5 rounded-full bg-grad-orange" />
+      </div>
+      <p className="mt-3 text-xs text-neutral-500">Gemini calls can take 10-30 seconds. You can refresh; the backend keeps the step state.</p>
+    </div>
   );
 }

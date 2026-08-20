@@ -3,9 +3,13 @@ import type { Chapter } from "../../projects/types/project.types";
 export function ChapterCard({ chapter }: { chapter: Chapter }) {
   return (
     <article className="overflow-hidden rounded-lg border border-[#e8e2e0] bg-white">
-      <div className="flex aspect-video items-center justify-center bg-grad-paper text-xs font-bold uppercase tracking-wide text-neutral-500">
-        {chapter.illustrationPath ? "Illustration" : "Illustration pending"}
-      </div>
+      {chapter.illustrationPath ? (
+        <img className="aspect-video w-full object-cover" src={chapter.illustrationPath} alt={`${chapter.name} illustration`} />
+      ) : (
+        <div className="flex aspect-video items-center justify-center bg-grad-paper text-xs font-bold uppercase tracking-wide text-neutral-500">
+          Illustration pending
+        </div>
+      )}
       <div className="p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-bold">{chapter.name}</h3>

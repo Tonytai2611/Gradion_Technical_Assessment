@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "../../../shared/ui/Button";
 import { Shell } from "../../../shared/ui/Shell";
+import { StatusToast } from "../../../shared/ui/StatusToast";
 import { useProjects } from "../hooks/useProjects";
 import { ProjectProgress } from "./ProjectProgress";
 
@@ -14,7 +15,11 @@ export function ProjectsPage() {
         <h1 className="text-3xl font-black">Your projects</h1>
         <Link to="/projects/new"><Button>+ New project</Button></Link>
       </div>
-      {isLoading ? <p>Loading projects...</p> : null}
+      {isLoading ? (
+        <section className="rounded-lg border border-[#e8e2e0] bg-white p-6 text-sm text-neutral-600">
+          Loading your projects...
+        </section>
+      ) : null}
       {!isLoading && projects.length === 0 ? (
         <section className="flex min-h-64 flex-col items-center justify-center rounded-lg border border-dashed border-grad-line text-center">
           <p className="mb-4 text-neutral-600">No projects yet.</p>
@@ -36,6 +41,7 @@ export function ProjectsPage() {
           ))}
         </div>
       )}
+      {isLoading && <StatusToast title="Loading projects" description="Fetching your saved illustration projects." />}
     </Shell>
   );
 }
