@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs";
 import type { AppDb } from "../../../shared/db/client.js";
 import { env } from "../../../shared/config/env.js";
 import { ensureImageDirs, readTextFile, writeProjectBook } from "../../../shared/lib/filesystem.js";
@@ -38,9 +39,28 @@ export class ProjectService {
     return {
       ...project,
       bookText,
-      characters: this.projects.getCharacters(project.id),
-      chapters: this.projects.getChapters(project.id),
+      characters: this.projects.getCharacters(project.id).map((character) => ({
+        ...character,
+        portraitPath: character.portraitPath ? `/api/projects/${project.id}/images/characters/${path.basename(character.portraitPath)}` : null
+      })),
+      chapters: this.projects.getChapters(project.id).map((chapter) => ({
+        ...chapter,
+        illustrationPath: chapter.illustrationPath ? `/api/projects/${project.id}/images/chapters/${path.basename(chapter.illustrationPath)}` : null
+      })),
       isStale
     };
+  }
+
+  getImageFile(projectId: string, userId: string, kind: "characters" | "chapters", fileName: string) {
+    assertFound(this.projects.findForUser(projectId, userId), "Project not found");
+    const imageDir = path.resolve(this.dataRoot, "images", projectId, kind);
+    const imagePath = path.resolve(imageDir, fileName);
+    if (!imagePath.startsWith(imageDir + path.sep)) {
+      throw new AppError(400, "Invalid image path", "VALIDATION_ERROR");
+    }
+    if (!fs.existsSync(imagePath)) {
+      throw new AppError(404, "Image not found", "NOT_FOUND");
+    }
+    return imagePath;
   }
 }

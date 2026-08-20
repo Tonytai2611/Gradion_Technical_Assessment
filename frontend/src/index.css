@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #231f20;
+  background: #f8f8f8;
+  font-family: "Noto Sans", system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.gd-focus {
+  @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-grad-orange;
+}
+
+.gd-progress-bar {
+  animation: gd-progress 1.35s ease-in-out infinite;
+}
+
+@keyframes gd-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+  55% {
+    transform: translateX(80%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}

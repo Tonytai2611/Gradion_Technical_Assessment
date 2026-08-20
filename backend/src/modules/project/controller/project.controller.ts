@@ -37,4 +37,18 @@ export class ProjectController {
       next(error);
     }
   };
+
+  image: RequestHandler = (req, res, next) => {
+    try {
+      const kind = req.params.kind === "characters" || req.params.kind === "chapters" ? req.params.kind : null;
+      if (!kind) {
+        res.status(400).json({ error: "Invalid image kind" });
+        return;
+      }
+      const imagePath = this.projects.getImageFile(String(req.params.projectId), req.user!.id, kind, String(req.params.fileName));
+      res.sendFile(imagePath);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
