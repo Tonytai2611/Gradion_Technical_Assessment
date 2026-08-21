@@ -33,6 +33,14 @@ If port `3000` is already in use, run the backend on another port and point Vite
 PORT=3001 VITE_API_PROXY_TARGET=http://localhost:3001 npm run dev
 ```
 
+On PowerShell:
+
+```powershell
+$env:PORT="3001"
+$env:VITE_API_PROXY_TARGET="http://localhost:3001"
+npm run dev
+```
+
 ## Start
 
 ```bash
@@ -46,6 +54,20 @@ or:
 ```
 
 This installs dependencies, runs the SQLite setup, and starts backend and frontend dev servers.
+
+Open the app at:
+
+```text
+http://localhost:5173
+```
+
+The backend defaults to:
+
+```text
+http://localhost:3000
+```
+
+If `3000` is occupied by another local service, use the PowerShell port override shown above and open Swagger at `http://localhost:3001/api/docs`.
 
 ## Test
 
@@ -81,6 +103,26 @@ http://localhost:3001/api/docs
 ```
 
 The raw OpenAPI JSON is available at `/api/openapi.json`.
+
+## Manual Smoke Test
+
+Use a short sample book to verify the full pipeline:
+
+```text
+Title: The Lighthouse Mystery
+
+John and David arrived at the old lighthouse just before sunset. John carried a brass lantern, while David held a folded map he had found in his grandfather's attic. The sea wind was cold, and gulls circled above the rocks.
+
+Inside the lighthouse, they discovered dusty stairs, a locked cabinet, and a strange blue light coming from the top room. John wanted to turn back, but David believed the light was a clue. Together, they climbed toward the sound of waves and the mystery waiting above.
+```
+
+Expected flow:
+
+```text
+Style -> Characters -> Portraits -> Chapters -> Illustrations -> DONE
+```
+
+The text steps should use Gemini when `GEMINI_API_KEY` is configured. Image steps try Gemini first and may fall back to deterministic mock images only for quota or rate-limit failures.
 
 ## Architecture
 
