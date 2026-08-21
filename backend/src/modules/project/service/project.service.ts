@@ -4,12 +4,16 @@ import type { AppDb } from "../../../shared/db/client.js";
 import { env } from "../../../shared/config/env.js";
 import { ensureImageDirs, readTextFile, writeProjectBook } from "../../../shared/lib/filesystem.js";
 import { AppError, assertFound } from "../../../shared/lib/errors.js";
+import type { ChapterRepository } from "../repository/chapter.repository.js";
+import type { CharacterRepository } from "../repository/character.repository.js";
 import type { ProjectRepository } from "../repository/project.repository.js";
 
 export class ProjectService {
   constructor(
     private readonly store: AppDb,
     private readonly projects: ProjectRepository,
+    private readonly characters: CharacterRepository,
+    private readonly chapters: ChapterRepository,
     private readonly dataRoot = path.resolve(process.cwd(), "data")
   ) {}
 
@@ -39,11 +43,11 @@ export class ProjectService {
     return {
       ...project,
       bookText,
-      characters: this.projects.getCharacters(project.id).map((character) => ({
+      characters: this.characters.listForProject(project.id).map((character) => ({
         ...character,
         portraitPath: character.portraitPath ? `/api/projects/${project.id}/images/characters/${path.basename(character.portraitPath)}` : null
       })),
-      chapters: this.projects.getChapters(project.id).map((chapter) => ({
+      chapters: this.chapters.listForProject(project.id).map((chapter) => ({
         ...chapter,
         illustrationPath: chapter.illustrationPath ? `/api/projects/${project.id}/images/chapters/${path.basename(chapter.illustrationPath)}` : null
       })),

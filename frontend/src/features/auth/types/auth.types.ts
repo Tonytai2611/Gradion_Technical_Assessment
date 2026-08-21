@@ -1,7 +1,3 @@
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { components } from "../../../shared/api/generated-openapi";
+
+export type User = components["schemas"]["User"];

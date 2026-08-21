@@ -1,7 +1,9 @@
 import { readTextFile } from "../../../shared/lib/filesystem.js";
 import { AppError, assertFound } from "../../../shared/lib/errors.js";
+import type { ChapterRepository } from "../../project/repository/chapter.repository.js";
+import type { CharacterRepository } from "../../project/repository/character.repository.js";
 import type { ProjectRepository } from "../../project/repository/project.repository.js";
-import type { CharacterModel } from "../../project/type/project.types.js";
+import type { ChapterModel, CharacterModel } from "../../project/type/project.types.js";
 import { parseContext, type ImageGenerationProvider, type TextGenerationProvider } from "./gemini.service.js";
 import type { PipelineRepository } from "../repository/pipeline.repository.js";
 import { nextStep, type PipelineStep } from "../type/pipeline.types.js";
@@ -11,6 +13,8 @@ export class PipelineService {
   constructor(
     private readonly pipeline: PipelineRepository,
     private readonly projects: ProjectRepository,
+    private readonly characters: CharacterRepository,
+    private readonly chapters: ChapterRepository,
     private readonly textProvider: TextGenerationProvider,
     private readonly imageProvider: ImageGenerationProvider,
     private readonly staleAfterMs: number
@@ -49,12 +53,13 @@ export class PipelineService {
           contextReference: fresh.geminiContextReference
         });
         if (characters.contextReference) this.pipeline.setGeminiContextReference(projectId, characters.contextReference);
-        this.pipeline.replaceCharacters(projectId, characters.value.slice(0, 2));
+        this.characters.replaceForProject(projectId, characters.value.slice(0, 2));
       } else if (step === "PORTRAITS") {
-        const characters = this.pipeline.listCharacters(projectId);
+        const characters = this.characters.listForProject(projectId);
         if (!characters.length) throw new AppError(422, "Characters must exist before portraits", "MISSING_CHARACTERS");
         let contextReference = fresh.geminiContextReference;
         for (const [characterIndex, character] of characters.entries()) {
+          if (await hasPersistedPortrait(character)) continue;
           const portrait = await this.imageProvider.generatePortrait({
             projectId,
             characterId: character.id,
@@ -64,7 +69,7 @@ export class PipelineService {
             style: fresh.style,
             contextReference
           });
-          this.pipeline.updateCharacterPortrait(character.id, portrait);
+          this.characters.updatePortrait(character.id, portrait);
           if (portrait.contextReference) {
             contextReference = portrait.contextReference;
             this.pipeline.setGeminiContextReference(projectId, portrait.contextReference);
@@ -72,7 +77,7 @@ export class PipelineService {
         }
       } else if (step === "CHAPTERS") {
         if (!fresh.style) throw new AppError(422, "Style must exist before chapters", "MISSING_STYLE");
-        const characters = this.pipeline.listCharacters(projectId);
+        const characters = this.characters.listForProject(projectId);
         const chapters = await this.textProvider.generateChapters({
           projectId,
           bookPath: fresh.bookPath,
@@ -82,11 +87,11 @@ export class PipelineService {
           contextReference: fresh.geminiContextReference
         });
         if (chapters.contextReference) this.pipeline.setGeminiContextReference(projectId, chapters.contextReference);
-        this.pipeline.replaceChapters(projectId, chapters.value.slice(0, 1));
+        this.chapters.replaceForProject(projectId, chapters.value.slice(0, 1));
       } else if (step === "ILLUSTRATIONS") {
-        const chapters = this.pipeline.listChapters(projectId);
+        const chapters = this.chapters.listForProject(projectId);
         if (!chapters.length) throw new AppError(422, "Chapters must exist before illustrations", "MISSING_CHAPTERS");
-        const characters = this.pipeline.listCharacters(projectId);
+        const characters = this.characters.listForProject(projectId);
         const references = await Promise.all(
           characters.map((character) => hasUsablePortraitReference(character, fresh.geminiContextReference))
         );
@@ -95,6 +100,7 @@ export class PipelineService {
         }
         let contextReference = fresh.geminiContextReference;
         for (const [chapterIndex, chapter] of chapters.entries()) {
+          if (await hasPersistedIllustration(chapter)) continue;
           const illustration = await this.imageProvider.generateIllustration({
             projectId,
             chapterId: chapter.id,
@@ -103,7 +109,7 @@ export class PipelineService {
             prompt: chapter.prompt,
             contextReference
           });
-          this.pipeline.updateChapterIllustration(chapter.id, illustration);
+          this.chapters.updateIllustration(chapter.id, illustration);
           if (illustration.contextReference) {
             contextReference = illustration.contextReference;
             this.pipeline.setGeminiContextReference(projectId, illustration.contextReference);
@@ -139,9 +145,23 @@ export class PipelineService {
 export async function hasUsablePortraitReference(character: CharacterModel, contextReference?: string | null) {
   const context = parseContext(contextReference);
   if (context.lastImageInteractionId) return true;
+  return hasPersistedPortrait(character);
+}
+
+async function hasPersistedPortrait(character: CharacterModel) {
   if (character.generationState !== "COMPLETED" || !character.portraitPath) return false;
   try {
     await fs.access(character.portraitPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function hasPersistedIllustration(chapter: ChapterModel) {
+  if (chapter.generationState !== "COMPLETED" || !chapter.illustrationPath) return false;
+  try {
+    await fs.access(chapter.illustrationPath);
     return true;
   } catch {
     return false;

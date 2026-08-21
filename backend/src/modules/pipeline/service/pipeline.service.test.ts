@@ -7,6 +7,8 @@ import { createDb, type AppDb } from "../../../shared/db/client.js";
 import { migrate } from "../../../shared/db/migrate.js";
 import { UserRepository } from "../../auth/repository/user.repository.js";
 import { ProjectRepository } from "../../project/repository/project.repository.js";
+import { CharacterRepository } from "../../project/repository/character.repository.js";
+import { ChapterRepository } from "../../project/repository/chapter.repository.js";
 import { ProjectService } from "../../project/service/project.service.js";
 import { PipelineRepository } from "../repository/pipeline.repository.js";
 import { PipelineService } from "./pipeline.service.js";
@@ -85,11 +87,56 @@ class ThrowingImageProvider implements ImageGenerationProvider {
   }
 }
 
+class FailAfterFirstPortraitProvider implements ImageGenerationProvider {
+  portraitCalls = 0;
+
+  constructor(private readonly dataRoot: string) {}
+
+  async generatePortrait(input: { projectId: string; characterId: string }): Promise<GeneratedImage> {
+    this.portraitCalls += 1;
+    if (this.portraitCalls > 1) throw new Error("Second portrait failed");
+    const targetDir = path.join(this.dataRoot, "images", input.projectId, "characters");
+    const targetPath = path.join(targetDir, `${input.characterId}.png`);
+    await fs.mkdir(targetDir, { recursive: true });
+    await fs.writeFile(targetPath, `portrait-${input.characterId}`);
+    return { filePath: targetPath, mimeType: "image/png", source: "gemini" };
+  }
+
+  async generateIllustration(): Promise<GeneratedImage> {
+    throw new Error("Not used");
+  }
+}
+
+class CountingImageProvider implements ImageGenerationProvider {
+  portraitCalls = 0;
+
+  constructor(private readonly dataRoot: string) {}
+
+  async generatePortrait(input: { projectId: string; characterId: string }): Promise<GeneratedImage> {
+    this.portraitCalls += 1;
+    const targetDir = path.join(this.dataRoot, "images", input.projectId, "characters");
+    const targetPath = path.join(targetDir, `${input.characterId}-retry.png`);
+    await fs.mkdir(targetDir, { recursive: true });
+    await fs.writeFile(targetPath, `retry-portrait-${input.characterId}`);
+    return { filePath: targetPath, mimeType: "image/png", source: "gemini" };
+  }
+
+  async generateIllustration(input: { projectId: string; chapterId: string }): Promise<GeneratedImage> {
+    const targetDir = path.join(this.dataRoot, "images", input.projectId, "chapters");
+    const targetPath = path.join(targetDir, `${input.chapterId}.png`);
+    await fs.mkdir(targetDir, { recursive: true });
+    await fs.writeFile(targetPath, `illustration-${input.chapterId}`);
+    return { filePath: targetPath, mimeType: "image/png", source: "gemini" };
+  }
+}
+
 describe("PipelineService", () => {
   let store: AppDb;
   let dataRoot: string;
   let users: UserRepository;
   let projectsRepo: ProjectRepository;
+  let characterRepo: CharacterRepository;
+  let chapterRepo: ChapterRepository;
   let projects: ProjectService;
   let pipelineRepo: PipelineRepository;
   let textProvider: TestTextProvider;
@@ -104,11 +151,13 @@ describe("PipelineService", () => {
     migrate(store.sqlite);
     users = new UserRepository(store);
     projectsRepo = new ProjectRepository(store);
-    projects = new ProjectService(store, projectsRepo, dataRoot);
+    characterRepo = new CharacterRepository(store);
+    chapterRepo = new ChapterRepository(store);
+    projects = new ProjectService(store, projectsRepo, characterRepo, chapterRepo, dataRoot);
     pipelineRepo = new PipelineRepository(store);
     textProvider = new TestTextProvider();
     imageProvider = new TestImageProvider();
-    pipeline = new PipelineService(pipelineRepo, projectsRepo, textProvider, imageProvider, 1000);
+    pipeline = new PipelineService(pipelineRepo, projectsRepo, characterRepo, chapterRepo, textProvider, imageProvider, 1000);
 
     userId = users.upsertByEmail({ name: "Test User", email: "test@example.com" }).id;
     const project = await projects.create(userId, { title: "Wind", bookText: "A riverbank story with adult animals." });
@@ -187,7 +236,7 @@ describe("PipelineService", () => {
     await pipeline.runStep(projectId, userId, "STYLE");
     await pipeline.runStep(projectId, userId, "CHARACTERS");
 
-    expect(pipelineRepo.listCharacters(projectId)).toHaveLength(2);
+    expect(characterRepo.listForProject(projectId)).toHaveLength(2);
   });
 
   it("caps chapter results at 1 server-side", async () => {
@@ -196,7 +245,7 @@ describe("PipelineService", () => {
     await pipeline.runStep(projectId, userId, "PORTRAITS");
     await pipeline.runStep(projectId, userId, "CHAPTERS");
 
-    expect(pipelineRepo.listChapters(projectId)).toHaveLength(1);
+    expect(chapterRepo.listForProject(projectId)).toHaveLength(1);
   });
 
   it("falls back to mock images only for quota or rate-limit errors", async () => {
@@ -208,10 +257,10 @@ describe("PipelineService", () => {
       new MockImageProvider(dataRoot),
       { warn: () => undefined }
     );
-    pipeline = new PipelineService(pipelineRepo, projectsRepo, textProvider, fallbackImageProvider, 1000);
+    pipeline = new PipelineService(pipelineRepo, projectsRepo, characterRepo, chapterRepo, textProvider, fallbackImageProvider, 1000);
 
     await pipeline.runStep(projectId, userId, "PORTRAITS");
-    const characters = pipelineRepo.listCharacters(projectId);
+    const characters = characterRepo.listForProject(projectId);
 
     expect(characters).toHaveLength(2);
     expect(characters.every((character) => character.generationState === "COMPLETED")).toBe(true);
@@ -236,11 +285,32 @@ describe("PipelineService", () => {
       new MockImageProvider(dataRoot),
       { warn: () => undefined }
     );
-    pipeline = new PipelineService(pipelineRepo, projectsRepo, textProvider, fallbackImageProvider, 1000);
+    pipeline = new PipelineService(pipelineRepo, projectsRepo, characterRepo, chapterRepo, textProvider, fallbackImageProvider, 1000);
 
     await expect(pipeline.runStep(projectId, userId, "PORTRAITS")).rejects.toThrow("invalid api key");
     expect(pipelineRepo.findProject(projectId)?.stepState).toBe("FAILED");
-    expect(pipelineRepo.listCharacters(projectId).every((character) => character.portraitSource === null)).toBe(true);
+    expect(characterRepo.listForProject(projectId).every((character) => character.portraitSource === null)).toBe(true);
+  });
+
+  it("retrying portraits reuses completed portraits and only generates missing items", async () => {
+    await pipeline.runStep(projectId, userId, "STYLE");
+    await pipeline.runStep(projectId, userId, "CHARACTERS");
+    const failingProvider = new FailAfterFirstPortraitProvider(dataRoot);
+    pipeline = new PipelineService(pipelineRepo, projectsRepo, characterRepo, chapterRepo, textProvider, failingProvider, 1000);
+
+    await expect(pipeline.runStep(projectId, userId, "PORTRAITS")).rejects.toThrow("Second portrait failed");
+    const afterFailure = characterRepo.listForProject(projectId);
+    const completedPortrait = afterFailure.find((character) => character.generationState === "COMPLETED")!;
+    const originalPortraitPath = completedPortrait.portraitPath;
+
+    const retryProvider = new CountingImageProvider(dataRoot);
+    pipeline = new PipelineService(pipelineRepo, projectsRepo, characterRepo, chapterRepo, textProvider, retryProvider, 1000);
+    await pipeline.runStep(projectId, userId, "PORTRAITS");
+    const afterRetry = characterRepo.listForProject(projectId);
+
+    expect(retryProvider.portraitCalls).toBe(1);
+    expect(afterRetry.every((character) => character.generationState === "COMPLETED")).toBe(true);
+    expect(afterRetry.find((character) => character.id === completedPortrait.id)?.portraitPath).toBe(originalPortraitPath);
   });
 
   it("illustration fails if a character has no portrait reference at all", async () => {
@@ -265,6 +335,8 @@ describe("PipelineService", () => {
     pipeline = new PipelineService(
       pipelineRepo,
       projectsRepo,
+      characterRepo,
+      chapterRepo,
       textProvider,
       new QuotaFallbackImageProvider(
         new ThrowingImageProvider(quotaError),
@@ -285,10 +357,10 @@ describe("PipelineService", () => {
       new MockImageProvider(dataRoot),
       { warn: () => undefined }
     );
-    pipeline = new PipelineService(pipelineRepo, projectsRepo, textProvider, fallbackImageProvider, 1000);
+    pipeline = new PipelineService(pipelineRepo, projectsRepo, characterRepo, chapterRepo, textProvider, fallbackImageProvider, 1000);
 
     const project = await pipeline.runStep(projectId, userId, "ILLUSTRATIONS");
-    const chapters = pipelineRepo.listChapters(projectId);
+    const chapters = chapterRepo.listForProject(projectId);
 
     expect(project.status).toBe("DONE");
     expect(chapters[0].illustrationSource).toBe("mock");
@@ -310,7 +382,7 @@ describe("PipelineService", () => {
     const project = await pipeline.runStep(projectId, userId, "ILLUSTRATIONS");
 
     expect(project.status).toBe("DONE");
-    expect(pipelineRepo.listChapters(projectId)[0].illustrationSource).toBe("gemini");
+    expect(chapterRepo.listForProject(projectId)[0].illustrationSource).toBe("gemini");
   });
 
   it("prevents a user from accessing another user's project", async () => {

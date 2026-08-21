@@ -1,9 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { AppDb } from "../../../shared/db/client.js";
-import { characters, chapters, projects } from "../../../shared/db/schema.js";
+import { projects } from "../../../shared/db/schema.js";
 import { nowIso } from "../../../shared/lib/time.js";
-import type { ChapterModel, CharacterModel, ProjectModel } from "../type/project.types.js";
+import type { ProjectModel } from "../type/project.types.js";
 
 export class ProjectRepository {
   constructor(private readonly store: AppDb) {}
@@ -41,11 +41,4 @@ export class ProjectRepository {
     return this.store.db.select().from(projects).where(and(eq(projects.id, projectId), eq(projects.userId, userId))).get() as ProjectModel | undefined;
   }
 
-  getCharacters(projectId: string): CharacterModel[] {
-    return this.store.db.select().from(characters).where(eq(characters.projectId, projectId)).all() as CharacterModel[];
-  }
-
-  getChapters(projectId: string): ChapterModel[] {
-    return this.store.db.select().from(chapters).where(eq(chapters.projectId, projectId)).all() as ChapterModel[];
-  }
 }
