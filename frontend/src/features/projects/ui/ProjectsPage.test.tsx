@@ -33,13 +33,15 @@ describe("ProjectsPage", () => {
       id: "p1",
       userId: "u1",
       title: "Wind in the Willows",
+      bookPath: "books/p1.txt",
       status: "IN_PROGRESS",
       currentStep: "PORTRAITS",
       stepState: "READY",
       stepStartedAt: null,
       lastError: null,
       style: "Watercolor",
-      createdAt: "2026-08-18T00:00:00.000Z"
+      createdAt: "2026-08-18T00:00:00.000Z",
+      updatedAt: "2026-08-18T00:00:00.000Z"
     };
     mockedProjects.listProjects.mockResolvedValue({ projects: [project] });
 

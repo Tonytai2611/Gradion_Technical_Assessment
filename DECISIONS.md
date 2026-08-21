@@ -26,6 +26,14 @@ The notebook uses the Gemini Files API, Interactions API, structured JSON output
 
 The assessment allows mocked image responses when live image generation runs into free-tier quota or rate limits. I kept real Gemini image generation as the preferred path, but added a provider boundary and fallback wrapper so only clearly identified quota/rate-limit errors can use deterministic mock images. I corrected an earlier placeholder SVG implementation because it looked too technical and did not prove the real image serving path; the mock provider now copies real PNG assets into the same project output folders as Gemini images. Invalid credentials, malformed requests, parsing mistakes, and programming errors still fail visibly.
 
+## Item-level retry reuse
+
+A failed step should not erase good work from the same step. I split character and chapter persistence out of the pipeline repository, then changed image retries to skip any completed item whose file still exists on disk. If Portraits fails after character one succeeds, retrying Portraits generates only character two. That keeps the user-triggered retry rule while avoiding the reviewer feedback problem where retrying means regenerating everything.
+
+## OpenAPI-generated frontend contract
+
+The first frontend types were handwritten, which was easy to read but weak as an API contract. I kept the simple REST client, but now generate TypeScript schemas from `backend/src/openapi.ts` with `npm run generate:api-types`. Frontend feature types import from that generated file, so missing fields such as `bookPath` or `updatedAt` are caught during `npm --workspace frontend run build`.
+
 ## AI overrides
 
 These are the places where I had to push back on AI output or correct an AI-assisted implementation:

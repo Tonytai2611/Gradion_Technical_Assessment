@@ -14,6 +14,8 @@ import { authRoutes } from "./modules/auth/api/auth.routes.js";
 import { AuthService } from "./modules/auth/service/auth.service.js";
 import { UserRepository } from "./modules/auth/repository/user.repository.js";
 import { SessionRepository } from "./modules/auth/repository/session.repository.js";
+import { ChapterRepository } from "./modules/project/repository/chapter.repository.js";
+import { CharacterRepository } from "./modules/project/repository/character.repository.js";
 import { ProjectRepository } from "./modules/project/repository/project.repository.js";
 import { ProjectService } from "./modules/project/service/project.service.js";
 import { ProjectController } from "./modules/project/controller/project.controller.js";
@@ -45,11 +47,13 @@ export function createApp(options: {
   const users = new UserRepository(store);
   const sessions = new SessionRepository(store);
   const projects = new ProjectRepository(store);
+  const characters = new CharacterRepository(store);
+  const chapters = new ChapterRepository(store);
   const pipelineRepo = new PipelineRepository(store);
   const dataRoot = options.dataRoot ?? path.resolve(process.cwd(), "data");
 
   const authService = new AuthService(users, sessions);
-  const projectService = new ProjectService(store, projects, dataRoot);
+  const projectService = new ProjectService(store, projects, characters, chapters, dataRoot);
   const textProvider = options.textProvider ?? (
     env.GEMINI_API_KEY
       ? new GeminiTextProvider(env.GEMINI_API_KEY, env.GEMINI_TEXT_MODEL, env.GEMINI_SERVICE_TIER)
@@ -66,6 +70,8 @@ export function createApp(options: {
   const pipelineService = new PipelineService(
     pipelineRepo,
     projects,
+    characters,
+    chapters,
     textProvider,
     imageProvider,
     options.staleAfterMs ?? env.STEP_STALE_AFTER_MS

@@ -33,6 +33,14 @@ If port `3000` is already in use, run the backend on another port and point Vite
 PORT=3001 VITE_API_PROXY_TARGET=http://localhost:3001 npm run dev
 ```
 
+On PowerShell:
+
+```powershell
+$env:PORT="3001"
+$env:VITE_API_PROXY_TARGET="http://localhost:3001"
+npm run dev
+```
+
 ## Start
 
 ```bash
@@ -47,6 +55,20 @@ or:
 
 This installs dependencies, runs the SQLite setup, and starts backend and frontend dev servers.
 
+Open the app at:
+
+```text
+http://localhost:5173
+```
+
+The backend defaults to:
+
+```text
+http://localhost:3000
+```
+
+If `3000` is occupied by another local service, use the PowerShell port override shown above and open Swagger at `http://localhost:3001/api/docs`.
+
 ## Test
 
 ```bash
@@ -54,6 +76,17 @@ This installs dependencies, runs the SQLite setup, and starts backend and fronte
 ```
 
 This runs backend Vitest tests and frontend Vitest tests. The command fails if either side fails.
+
+Additional hardening checks:
+
+```bash
+npm run lint
+npm run generate:api-types
+npm --workspace backend run build
+npm --workspace frontend run build
+```
+
+`generate:api-types` regenerates the frontend API contract from `backend/src/openapi.ts`; frontend domain types import from the generated OpenAPI schemas instead of duplicating the backend response shape by hand.
 
 ## API Docs
 
@@ -71,6 +104,26 @@ http://localhost:3001/api/docs
 
 The raw OpenAPI JSON is available at `/api/openapi.json`.
 
+## Manual Smoke Test
+
+Use a short sample book to verify the full pipeline:
+
+```text
+Title: The Lighthouse Mystery
+
+John and David arrived at the old lighthouse just before sunset. John carried a brass lantern, while David held a folded map he had found in his grandfather's attic. The sea wind was cold, and gulls circled above the rocks.
+
+Inside the lighthouse, they discovered dusty stairs, a locked cabinet, and a strange blue light coming from the top room. John wanted to turn back, but David believed the light was a clue. Together, they climbed toward the sound of waves and the mystery waiting above.
+```
+
+Expected flow:
+
+```text
+Style -> Characters -> Portraits -> Chapters -> Illustrations -> DONE
+```
+
+The text steps should use Gemini when `GEMINI_API_KEY` is configured. Image steps try Gemini first and may fall back to deterministic mock images only for quota or rate-limit failures.
+
 ## Architecture
 
 The app is a modular monolith:
@@ -85,6 +138,8 @@ React + TanStack Query
 ```
 
 The backend keeps pipeline transition logic inside `PipelineService`, with atomic SQLite step claiming to prevent duplicate execution from double-clicks, refreshes, second tabs, or overlapping requests.
+
+Entity persistence is split by concern: `PipelineRepository` owns project step state and stale recovery, while `CharacterRepository` and `ChapterRepository` own generated entities. Retrying a failed image step reuses already persisted portrait/illustration files and generates only missing items.
 
 The frontend is feature-based: `auth`, `projects`, and `pipeline`, with service modules owning API calls and hooks owning server-state behavior.
 
@@ -105,7 +160,9 @@ Implemented:
 - Pipeline state machine and duplicate step claiming.
 - Stale-step recovery and retryable failures.
 - Server-side 2-character and 1-chapter caps.
+- Item-level retry reuse for image steps, so completed portraits/illustrations are not overwritten on retry.
 - Image provider boundary with quota-only mock fallback support.
+- ESLint plus generated OpenAPI frontend types for API contract hardening.
 - Minimal React UI structure matching the required assessment screens.
 - Backend and frontend tests.
 

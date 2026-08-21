@@ -15,7 +15,9 @@ describe("CharacterCard", () => {
           portraitPath: "/api/images/mole.png",
           portraitMimeType: "image/png",
           portraitSource: "gemini",
-          generationState: "COMPLETED"
+          generationState: "COMPLETED",
+          createdAt: "2026-08-18T00:00:00.000Z",
+          updatedAt: "2026-08-18T00:00:00.000Z"
         }}
       />
     );
