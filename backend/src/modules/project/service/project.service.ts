@@ -1,6 +1,5 @@
 import path from "node:path";
 import fs from "node:fs";
-import type { AppDb } from "../../../shared/db/client.js";
 import { env } from "../../../shared/config/env.js";
 import { ensureImageDirs, readTextFile, writeProjectBook } from "../../../shared/lib/filesystem.js";
 import { AppError, assertFound } from "../../../shared/lib/errors.js";
@@ -10,7 +9,6 @@ import type { ProjectRepository } from "../repository/project.repository.js";
 
 export class ProjectService {
   constructor(
-    private readonly store: AppDb,
     private readonly projects: ProjectRepository,
     private readonly characters: CharacterRepository,
     private readonly chapters: ChapterRepository,
@@ -27,10 +25,10 @@ export class ProjectService {
     if (!title) throw new AppError(400, "Project title is required", "VALIDATION_ERROR");
     if (!bookText) throw new AppError(400, "Book text is required", "VALIDATION_ERROR");
 
-    const project = this.store.sqlite.transaction(() => this.projects.create({ userId, title, bookPath: "__pending__" }))();
+    const project = this.projects.create({ userId, title, bookPath: "__pending__" });
     const bookPath = await writeProjectBook(this.dataRoot, project.id, bookText);
     await ensureImageDirs(this.dataRoot, project.id);
-    this.store.sqlite.prepare("UPDATE projects SET book_path = ?, updated_at = ? WHERE id = ?").run(bookPath, new Date().toISOString(), project.id);
+    this.projects.updateBookPath(project.id, bookPath);
     return assertFound(this.projects.findById(project.id));
   }
 

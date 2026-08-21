@@ -53,7 +53,7 @@ export function createApp(options: {
   const dataRoot = options.dataRoot ?? path.resolve(process.cwd(), "data");
 
   const authService = new AuthService(users, sessions);
-  const projectService = new ProjectService(store, projects, characters, chapters, dataRoot);
+  const projectService = new ProjectService(projects, characters, chapters, dataRoot);
   const textProvider = options.textProvider ?? (
     env.GEMINI_API_KEY
       ? new GeminiTextProvider(env.GEMINI_API_KEY, env.GEMINI_TEXT_MODEL, env.GEMINI_SERVICE_TIER)
