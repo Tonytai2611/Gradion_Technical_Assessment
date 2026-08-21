@@ -55,6 +55,17 @@ This installs dependencies, runs the SQLite setup, and starts backend and fronte
 
 This runs backend Vitest tests and frontend Vitest tests. The command fails if either side fails.
 
+Additional hardening checks:
+
+```bash
+npm run lint
+npm run generate:api-types
+npm --workspace backend run build
+npm --workspace frontend run build
+```
+
+`generate:api-types` regenerates the frontend API contract from `backend/src/openapi.ts`; frontend domain types import from the generated OpenAPI schemas instead of duplicating the backend response shape by hand.
+
 ## API Docs
 
 When the backend is running, Swagger UI is available at:
@@ -86,6 +97,8 @@ React + TanStack Query
 
 The backend keeps pipeline transition logic inside `PipelineService`, with atomic SQLite step claiming to prevent duplicate execution from double-clicks, refreshes, second tabs, or overlapping requests.
 
+Entity persistence is split by concern: `PipelineRepository` owns project step state and stale recovery, while `CharacterRepository` and `ChapterRepository` own generated entities. Retrying a failed image step reuses already persisted portrait/illustration files and generates only missing items.
+
 The frontend is feature-based: `auth`, `projects`, and `pipeline`, with service modules owning API calls and hooks owning server-state behavior.
 
 ## Gemini Image Fallback
@@ -105,7 +118,9 @@ Implemented:
 - Pipeline state machine and duplicate step claiming.
 - Stale-step recovery and retryable failures.
 - Server-side 2-character and 1-chapter caps.
+- Item-level retry reuse for image steps, so completed portraits/illustrations are not overwritten on retry.
 - Image provider boundary with quota-only mock fallback support.
+- ESLint plus generated OpenAPI frontend types for API contract hardening.
 - Minimal React UI structure matching the required assessment screens.
 - Backend and frontend tests.
 

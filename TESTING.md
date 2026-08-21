@@ -2,7 +2,7 @@
 
 ## Backend
 
-The backend tests focus on pipeline correctness: step ordering, atomic claims, retry, stale recovery, result caps, project ownership, and quota-only image fallback.
+The backend tests focus on pipeline correctness: step ordering, atomic claims, retry, item-level image reuse, stale recovery, result caps, project ownership, and quota-only image fallback.
 
 ## Frontend
 
@@ -23,13 +23,18 @@ npm test
 Result:
 
 ```text
-Backend: 1 test file passed, 16 tests passed.
+Backend: 1 test file passed, 17 tests passed.
 Frontend: 3 test files passed, 7 tests passed.
 ```
 
-Build checks also passed:
+Hardening and build checks also passed:
 
 ```bash
+npm run lint
+npm run generate:api-types
 npm --workspace backend run build
 npm --workspace frontend run build
+npm audit
 ```
+
+`npm audit` currently reports 0 known vulnerabilities.
