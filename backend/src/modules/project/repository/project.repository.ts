@@ -29,6 +29,10 @@ export class ProjectRepository {
     return project;
   }
 
+  updateBookPath(projectId: string, bookPath: string) {
+    this.store.db.update(projects).set({ bookPath, updatedAt: nowIso() }).where(eq(projects.id, projectId)).run();
+  }
+
   listForUser(userId: string): ProjectModel[] {
     return this.store.db.select().from(projects).where(eq(projects.userId, userId)).all() as ProjectModel[];
   }
